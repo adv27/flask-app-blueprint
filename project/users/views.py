@@ -65,54 +65,51 @@ def send_password_reset_email(user_email):
 @users_blueprint.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm(request.form)
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            try:
-                new_user = User(form.email.data, form.password.data)
-                new_user.authenticated = True
-                db.session.add(new_user)
-                db.session.commit()
-                send_confirmation_email(new_user.email)
-                message = Markup(
-                    "<strong>Success!</strong> Thanks for registering. Please check your email to confirm your email address.")
-                flash(message, 'success')
-                return redirect(url_for('home'))
-            except IntegrityError:
-                db.session.rollback()
-                message = Markup(
-                    "<strong>Error!</strong> Unable to process registration.")
-                flash(message, 'danger')
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            new_user = User(form.email.data, form.password.data)
+            new_user.authenticated = True
+            db.session.add(new_user)
+            db.session.commit()
+            send_confirmation_email(new_user.email)
+            message = Markup(
+                "<strong>Success!</strong> Thanks for registering. Please check your email to confirm your email address.")
+            flash(message, 'success')
+            return redirect(url_for('home'))
+        except IntegrityError:
+            db.session.rollback()
+            message = Markup(
+                "<strong>Error!</strong> Unable to process registration.")
+            flash(message, 'danger')
     return render_template('register.html', form=form)
 
 
 @users_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm(request.form)
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            user = User.query.filter_by(email=form.email.data).first()
-            if user is not None and user.is_correct_password(form.password.data):
-                if user.is_email_confirmed is not True:
-                    user.authenticated = True
-                    db.session.add(user)
-                    db.session.commit()
-                    login_user(user)
-                    return redirect(url_for('users.resend_email_confirmation'), )
-                if user.is_email_confirmed is True:
-                    user.authenticated = True
-                    user.last_logged_in = user.current_logged_in
-                    user.current_logged_in = datetime.now()
-                    db.session.add(user)
-                    db.session.commit()
-                    login_user(user)
-                    message = Markup(
-                        "<strong>Welcome back!</strong> You are now successfully logged in.")
-                    flash(message, 'success')
-                    return redirect(url_for('home'))
-            else:
-                message = Markup(
-                    "<strong>Error!</strong> Incorrect login credentials.")
-                flash(message, 'danger')
+    if request.method == 'POST' and form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user is not None and user.is_correct_password(form.password.data):
+            if user.is_email_confirmed is not True:
+                user.authenticated = True
+                db.session.add(user)
+                db.session.commit()
+                login_user(user)
+                return redirect(url_for('users.resend_email_confirmation'), )
+            user.authenticated = True
+            user.last_logged_in = user.current_logged_in
+            user.current_logged_in = datetime.now()
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
+            message = Markup(
+                "<strong>Welcome back!</strong> You are now successfully logged in.")
+            flash(message, 'success')
+            return redirect(url_for('home'))
+        else:
+            message = Markup(
+                "<strong>Error!</strong> Incorrect login credentials.")
+            flash(message, 'danger')
     return render_template('login.html', form=form)
 
 
@@ -249,16 +246,15 @@ def logout():
 @login_required
 def user_password_change():
     form = PasswordForm()
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            user = current_user
-            user.password = form.password.data
-            db.session.add(user)
-            db.session.commit()
-            message = Markup(
-                "Password has been updated!")
-            flash(message, 'success')
-            return redirect(url_for('users.user_profile'))
+    if request.method == 'POST' and form.validate_on_submit():
+        user = current_user
+        user.password = form.password.data
+        db.session.add(user)
+        db.session.commit()
+        message = Markup(
+            "Password has been updated!")
+        flash(message, 'success')
+        return redirect(url_for('users.user_profile'))
 
     return render_template('password_change.html', form=form)
 
@@ -292,29 +288,28 @@ def resend_email_confirmation():
 @login_required
 def user_email_change():
     form = EmailForm()
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            try:
-                user_check = User.query.filter_by(email=form.email.data).first()
-                if user_check is None:
-                    user = current_user
-                    user.email = form.email.data
-                    user.email_confirmed = False
-                    user.email_confirmed_on = None
-                    user.email_confirmation_sent_on = datetime.now()
-                    db.session.add(user)
-                    db.session.commit()
-                    send_confirmation_email(user.email)
-                    message = Markup(
-                        "Email changed!  Please confirm your new email address (link sent to new email)")
-                    flash(message, 'success')
-                    return redirect(url_for('users.user_profile'))
-                else:
-                    message = Markup(
-                        "Sorry, that email already exists!")
-                    flash(message, 'danger')
-            except IntegrityError:
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            user_check = User.query.filter_by(email=form.email.data).first()
+            if user_check is None:
+                user = current_user
+                user.email = form.email.data
+                user.email_confirmed = False
+                user.email_confirmed_on = None
+                user.email_confirmation_sent_on = datetime.now()
+                db.session.add(user)
+                db.session.commit()
+                send_confirmation_email(user.email)
+                message = Markup(
+                    "Email changed!  Please confirm your new email address (link sent to new email)")
+                flash(message, 'success')
+                return redirect(url_for('users.user_profile'))
+            else:
                 message = Markup(
                     "Sorry, that email already exists!")
                 flash(message, 'danger')
+        except IntegrityError:
+            message = Markup(
+                "Sorry, that email already exists!")
+            flash(message, 'danger')
     return render_template('email_change.html', form=form)

@@ -25,22 +25,21 @@ def all_items():
 @login_required
 def add_item():
     form = ItemsForm(request.form)
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            try:
-                new_item = Items(form.name.data, form.notes.data,
-                                 current_user.id)
-                db.session.add(new_item)
-                db.session.commit()
-                message = Markup(
-                    "<strong>Well done!</strong> Item added successfully!")
-                flash(message, 'success')
-                return redirect(url_for('home'))
-            except:
-                db.session.rollback()
-                message = Markup(
-                    "<strong>Oh snap!</strong>! Unable to add item.")
-                flash(message, 'danger')
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            new_item = Items(form.name.data, form.notes.data,
+                             current_user.id)
+            db.session.add(new_item)
+            db.session.commit()
+            message = Markup(
+                "<strong>Well done!</strong> Item added successfully!")
+            flash(message, 'success')
+            return redirect(url_for('home'))
+        except:
+            db.session.rollback()
+            message = Markup(
+                "<strong>Oh snap!</strong>! Unable to add item.")
+            flash(message, 'danger')
     return render_template('add_item.html', form=form)
 
 
@@ -51,21 +50,20 @@ def edit_item(items_id):
     item_with_user = db.session.query(Items, User).join(User).filter(Items.id == items_id).first()
     if item_with_user is not None:
         if current_user.is_authenticated and item_with_user.Items.user_id == current_user.id:
-            if request.method == 'POST':
-                if form.validate_on_submit():
-                    try:
-                        item = Items.query.get(items_id)
-                        item.name = form.name.data
-                        item.notes = form.notes.data
-                        db.session.commit()
-                        message = Markup("Item edited successfully!")
-                        flash(message, 'success')
-                        return redirect(url_for('home'))
-                    except:
-                        db.session.rollback()
-                        message = Markup(
-                            "<strong>Error!</strong> Unable to edit item.")
-                        flash(message, 'danger')
+            if request.method == 'POST' and form.validate_on_submit():
+                try:
+                    item = Items.query.get(items_id)
+                    item.name = form.name.data
+                    item.notes = form.notes.data
+                    db.session.commit()
+                    message = Markup("Item edited successfully!")
+                    flash(message, 'success')
+                    return redirect(url_for('home'))
+                except:
+                    db.session.rollback()
+                    message = Markup(
+                        "<strong>Error!</strong> Unable to edit item.")
+                    flash(message, 'danger')
             return render_template('edit_item.html', item=item_with_user, form=form)
         else:
             message = Markup(
@@ -82,7 +80,7 @@ def edit_item(items_id):
 def delete_item(items_id):
     item = Items.query.filter_by(id=items_id).first_or_404()
 
-    if not item.user_id == current_user.id:
+    if item.user_id != current_user.id:
         message = Markup(
             "<strong>Error!</strong> Incorrect permissions to delete this item.")
         flash(message, 'danger')
